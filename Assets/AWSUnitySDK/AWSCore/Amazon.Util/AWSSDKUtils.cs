@@ -26,6 +26,15 @@ namespace Amazon.Util
     /// </summary>
     public static partial class AWSSDKUtils
     {
+
+        static AWSSDKUtils()
+        {
+            SetUserAgent(_userAgentBaseName, SDKVersionNumber);
+            ValidPathCharacters = DetermineValidPathCharacters ();
+            //dispatcher = new BackgroundInvoker();
+        }
+
+
         #region Internal Constants
 
         internal const string DefaultRegion = "us-east-1";
@@ -76,7 +85,7 @@ namespace Amazon.Util
         /// <summary>
         /// The set of accepted and valid Url path characters per RFC3986.
         /// </summary>
-        private static string ValidPathCharacters = DetermineValidPathCharacters();
+        private static string ValidPathCharacters = null;
 
         // Checks which path characters should not be encoded
         // This set will be different for .NET 4 and .NET 4.5, as
@@ -134,8 +143,8 @@ namespace Amazon.Util
 
         #region UserAgent
 
-        static string _versionNumber;
-        static string _sdkUserAgent;
+        static string _sdkUserAgent = null;
+
         /// <summary>
         /// The AWS SDK User Agent
         /// </summary>        
@@ -147,28 +156,11 @@ namespace Amazon.Util
             }
         }
 
-        static AWSSDKUtils()
-        {
-            BuildUserAgentString();
-        }
-
         public static void SetUserAgent(string productName, string versionNumber)
         {
-            _userAgentBaseName = productName;
-            _versionNumber = versionNumber;
-            BuildUserAgentString();
-        }
-
-        static void BuildUserAgentString()
-        {
-            if (_versionNumber == null)
-            {
-                _versionNumber = SDKVersionNumber;
-            }
-
             _sdkUserAgent = string.Format(CultureInfo.InvariantCulture, "{0}/{1} .NET Runtime/{2} .NET Framework/{3} OS/{4}",
-                _userAgentBaseName,
-                _versionNumber,
+                productName,
+                versionNumber,
                 DetermineRuntime(),
                 DetermineFramework(),
                 DetermineOSVersion());
@@ -442,6 +434,10 @@ namespace Amazon.Util
         internal static void InvokeInBackground<T>(EventHandler<T> handler, T args, object sender) where T : EventArgs
         {
             if (handler == null) return;
+            if (dispatcher == null) {
+                Debug.Log("Initializing background invoker");
+                dispatcher = new BackgroundInvoker ();
+            }
 
             var list = handler.GetInvocationList();
             foreach (var call in list)
@@ -454,7 +450,7 @@ namespace Amazon.Util
             }
         }
 
-        private static BackgroundInvoker dispatcher = new BackgroundInvoker();
+        private static BackgroundInvoker dispatcher = null;
 
         /// <summary>
         /// Parses a query string of a URL and returns the parameters as a string-to-string dictionary.
